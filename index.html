@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>零度书签导航</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --sidebar-bg: #f5f5f5;
+            --sidebar-hover: #e0e0e0;
+            --card-bg: #f9f9f9;
+            --btn-bg: #4285f4;
+            --btn-text: #ffffff;
+            --modal-bg: rgba(0,0,0,0.5);
+            --modal-content-bg: #ffffff;
+            --border-color: #ddd;
+            --danger-color: #ef4444;
+            --import-export-color: #10b981;
+            --drag-over-color: #e8f4fd;
+            --drag-active-color: #d1e7fd;
+            --week-color: #4285f4; 
+            --week-weight: 600;
+            --icon-color: #4285f4; 
+            --undo-bg: #f59e0b; 
+            --undo-text: #ffffff;
+            --redo-bg: #6366f1; 
+            --redo-text: #ffffff;
+            --group-bg: #f0f0f0; /* 分组标题背景色 */
+            --group-hover: #e5e5e5; /* 分组标题悬浮色 */
+            --group-active: #d9d9d9; /* 分组标题点击激活色 */
+            --transition-ease: cubic-bezier(0.4, 0, 0.2, 1); /* 细腻缓动函数 */
+        }
+
+        .dark-mode {
+            --bg-color: #1a1a1a;
+            --text-color: #f0f0f0;
+            --sidebar-bg: #2d2d2d;
+            --sidebar-hover: #3d3d3d;
+            --card-bg: #252525;
+            --btn-bg: #3367d6;
+            --btn-text: #ffffff;
+            --modal-content-bg: #2d2d2d;
+            --border-color: #444;
+            --danger-color: #f87171;
+            --import-export-color: #34d399;
+            --drag-over-color: #2a3b4c;
+            --drag-active-color: #3a4b5c;
+            --week-color: #5b9bf3;
+            --icon-color: #5b9bf3;
+            --undo-bg: #d97706;
+            --redo-bg: #4f46e5;
+            --group-bg: #222222; /* 深色模式分组背景 */
+            --group-hover: #2c2c2c; /* 深色模式分组悬浮 */
+            --group-active: #363636; /* 深色模式分组激活 */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .time-bar {
+            width: 100%;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+            background-color: var(--sidebar-bg);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .time-icon {
+            color: var(--icon-color);
+            font-size: 16px;
+        }
+        .week-tag {
+            color: var(--week-color);
+            font-weight: var(--week-weight);
+            margin-left: 8px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 10px 20px;
+            background-color: var(--card-bg);
+            flex-wrap: wrap;
+        }
+
+        .theme-toggle, .add-bookmark-btn, .import-btn, .export-btn, .clear-btn, .expand-all-btn, .collapse-all-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            color: var(--btn-text);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .theme-toggle {
+            background-color: var(--btn-bg);
+        }
+
+        .add-bookmark-btn {
+            background-color: var(--btn-bg);
+        }
+
+        .import-btn, .export-btn {
+            background-color: var(--import-export-color);
+        }
+
+        .clear-btn {
+            background-color: var(--danger-color);
+        }
+
+        /* 新增：全部展开/全部折叠按钮 */
+        .expand-all-btn {
+            background-color: #0ea5e9;
+        }
+        .collapse-all-btn {
+            background-color: #f43f5e;
+        }
+
+        /* 撤销重做容器样式 */
+        .undo-redo-container {
+            position: fixed;
+            top: 40px;
+            right: 20px;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--card-bg);
+            padding: 8px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .undo-btn {
+            background-color: var(--undo-bg);
+            color: var(--undo-text);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .redo-btn {
+            background-color: var(--redo-bg);
+            color: var(--redo-text);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .undo-redo-text {
+            font-size: 14px;
+        }
+        .undo-redo-close {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #import-input {
+            display: none;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+        }
+
+        .sidebar {
+            width: 60px;
+            background-color: var(--sidebar-bg);
+            padding: 20px 0;
+            transition: width 0.3s;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .sidebar:hover, .sidebar.active {
+            width: 200px;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-item:hover {
+            background-color: var(--sidebar-hover);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .content {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .search-box {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        #search-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .search-btn {
+            padding: 0 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--btn-bg);
+            color: var(--btn-text);
+            cursor: pointer;
+        }
+
+        /* 书签分组样式 - 交互优化核心 */
+        .bookmark-group-container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px; /* 分组之间的间距 */
+        }
+
+        /* 分组标题栏 - 强化交互反馈 */
+        .bookmark-group-title {
+            width: 100%;
+            padding: 12px 20px;
+            background-color: var(--group-bg);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s var(--transition-ease); /* 多属性统一过渡 */
+            font-size: 16px;
+            font-weight: 600;
+            user-select: none; /* 禁止文字选中，提升交互体验 */
+            position: relative;
+        }
+
+        /* 悬浮效果 */
+        .bookmark-group-title:hover {
+            background-color: var(--group-hover);
+            transform: translateY(-1px); /* 轻微上浮，增强感知 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+        }
+
+        /* 点击按压效果 */
+        .bookmark-group-title:active {
+            background-color: var(--group-active);
+            transform: translateY(0); /* 复位，模拟按压 */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 阴影缩小 */
+        }
+
+        /* 分组标题左侧（图标+文字） */
+        .group-title-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .group-icon {
+            font-size: 20px;
+            color: var(--icon-color);
+            transition: transform 0.2s var(--transition-ease);
+        }
+
+        /* 分组标题悬浮时，图标轻微放大 */
+        .bookmark-group-title:hover .group-icon {
+            transform: scale(1.1);
+        }
+
+        /* 折叠/展开图标 - 优化视觉提示 */
+        .group-collapse-icon {
+            font-size: 18px;
+            color: var(--icon-color);
+            transition: all 0.3s var(--transition-ease); /* 旋转+透明度过渡 */
+            opacity: 0.8;
+        }
+
+        /* 悬浮时图标高亮 */
+        .bookmark-group-title:hover .group-collapse-icon {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        /* 折叠状态下图标旋转+复位 */
+        .bookmark-group.collapsed .group-collapse-icon {
+            transform: rotate(-90deg) scale(1);
+            opacity: 0.7;
+        }
+
+        /* 分组内容容器 - 细腻折叠动画 */
+        .bookmark-group-content {
+            width: 100%;
+            overflow: hidden;
+            transition: all 0.5s var(--transition-ease); /* 高度+透明度+内边距过渡 */
+            max-height: 2000px; /* 足够大的默认高度 */
+            opacity: 1;
+            padding: 15px 0;
+        }
+
+        /* 折叠状态下 - 多属性过渡，更细腻 */
+        .bookmark-group.collapsed .bookmark-group-content {
+            max-height: 0;
+            opacity: 0; /* 透明化，避免内容残留视觉 */
+            padding: 0; /* 内边距复位，消除折叠后空白 */
+        }
+
+        /* 书签卡片容器（嵌套在分组内） */
+        .bookmark-container {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+
+        .bookmark-card {
+            padding: 15px;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.2s, background-color 0.2s;
+            position: relative;
+            cursor: grab;
+        }
+
+        .bookmark-card:active {
+            cursor: grabbing;
+        }
+
+        .bookmark-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .bookmark-card a {
+            color: var(--text-color);
+            text-decoration: none;
+        }
+
+        .bookmark-card.drag-over {
+            background-color: var(--drag-over-color);
+            border: 2px dashed var(--btn-bg);
+        }
+
+        .bookmark-card.dragging {
+            opacity: 0.5;
+            background-color: var(--drag-active-color);
+        }
+
+        .bookmark-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: none;
+            gap: 5px;
+        }
+
+        .bookmark-card:hover .bookmark-actions {
+            display: flex;
+        }
+
+        .edit-btn, .delete-btn {
+            padding: 2px 5px;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--btn-text);
+        }
+
+        .edit-btn {
+            background-color: #f59e0b;
+        }
+
+        .delete-btn {
+            background-color: var(--danger-color);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--modal-bg);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--modal-content-bg);
+            padding: 25px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .modal-title {
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-form label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .modal-form input, .modal-form select {
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        .modal-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--btn-text);
+        }
+
+        .confirm-btn {
+            background-color: var(--btn-bg);
+        }
+
+        .cancel-btn {
+            background-color: #6b7280;
+        }
+
+        .footer {
+            margin-top: auto;
+            padding: 20px;
+            text-align: center;
+            background-color: var(--sidebar-bg);
+        }
+
+        .friend-links {
+            margin-top: 10px;
+        }
+
+        .friend-links a {
+            color: var(--btn-bg);
+            text-decoration: none;
+            margin: 0 8px;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                display: flex;
+                overflow-x: auto;
+            }
+            .sidebar:hover, .sidebar.active {
+                width: 100%;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .header {
+                justify-content: center;
+            }
+            .undo-redo-container {
+                top: 10px;
+                right: 10px;
+                width: calc(100% - 20px);
+                justify-content: center;
+            }
+            .bookmark-container {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="time-bar" id="time-bar">
+        <span class="time-icon">📅</span>
+        <span id="datetime-text"></span>
+        <span class="week-tag" id="week-text"></span>
+    </div>
+
+    <!-- 撤销重做容器 -->
+    <div class="undo-redo-container" id="undo-redo-container">
+        <span class="undo-redo-text" id="undo-redo-text">书签已删除</span>
+        <button class="undo-btn" id="undo-btn">撤销删除</button>
+        <button class="redo-btn" id="redo-btn" style="display:none">重做删除</button>
+        <button class="undo-redo-close" id="undo-redo-close-btn">×</button>
+    </div>
+
+    <div class="header">
+        <button class="theme-toggle" id="theme-toggle">切换深色模式</button>
+        <button class="add-bookmark-btn" id="add-bookmark-btn">新增书签</button>
+        <button class="import-btn" id="import-btn">导入书签</button>
+        <button class="export-btn" id="export-btn">导出书签</button>
+        <button class="clear-btn" id="clear-btn">清空全部</button>
+        <!-- 新增：全部展开/全部折叠按钮 -->
+        <button class="expand-all-btn" id="expand-all-btn">全部展开</button>
+        <button class="collapse-all-btn" id="collapse-all-btn">全部折叠</button>
+        <input type="file" id="import-input" accept=".json">
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar" id="sidebar">
+            <div class="nav-item" data-category="all">
+                <span class="nav-icon">📋</span>
+                <span class="nav-text">全部书签</span>
+            </div>
+            <div class="nav-item" data-category="common">
+                <span class="nav-icon">📌</span>
+                <span class="nav-text">常用书签</span>
+            </div>
+            <div class="nav-item" data-category="dev">
+                <span class="nav-icon">💻</span>
+                <span class="nav-text">开发工具</span>
+            </div>
+            <div class="nav-item" data-category="study">
+                <span class="nav-icon">📚</span>
+                <span class="nav-text">学习资源</span>
+            </div>
+            <div class="nav-item" data-category="design">
+                <span class="nav-icon">🎨</span>
+                <span class="nav-text">设计网站</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="搜索本地书签或必应搜索...">
+                <button class="search-btn" id="local-search-btn">本地搜索</button>
+                <button class="search-btn" id="bing-search-btn">必应搜索</button>
+            </div>
+
+            <!-- 书签分组容器 -->
+            <div class="bookmark-group-container" id="bookmark-group-container">
+                <!-- 分组内容由JS动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="copyright">Copyright © 零度导航 2024-2025 桂ICP备17008865号-1</div>
+        <div class="friend-links">
+            <a href="https://0do.top/" target="_blank">零度主页</a>
+            <a href="https://dh.0do.top/" target="_blank">零度导航</a>
+            <a href="https://0do.top/music/" target="_blank">音乐解析</a>
+        </div>
+    </div>
+
+    <div class="modal" id="bookmark-modal">
+        <div class="modal-content">
+            <h3 class="modal-title" id="modal-title">新增书签</h3>
+            <form class="modal-form" id="bookmark-form">
+                <input type="hidden" id="bookmark-id">
+                <label>
+                    书签名称
+                    <input type="text" id="bookmark-name" required placeholder="例如：GitHub">
+                </label>
+                <label>
+                    书签链接
+                    <input type="url" id="bookmark-url" required placeholder="例如：https://github.com">
+                </label>
+                <label>
+                    书签描述
+                    <input type="text" id="bookmark-desc" placeholder="例如：代码托管平台">
+                </label>
+                <label>
+                    书签分类
+                    <select id="bookmark-category" required>
+                        <option value="common">常用书签</option>
+                        <option value="dev">开发工具</option>
+                        <option value="study">学习资源</option>
+                        <option value="design">设计网站</option>
+                    </select>
+                </label>
+                <div class="modal-btns">
+                    <button type="button" class="modal-btn cancel-btn" onclick="closeModal()">取消</button>
+                    <button type="submit" class="modal-btn confirm-btn">确认</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ========== 基础配置 ==========
+        const BOOKMARK_KEY = 'my_nav_bookmarks';
+        const MAX_HISTORY_STEPS = 10;
+        let undoStack = [];
+        let redoStack = [];
+        let historyTimer = null;
+        const HISTORY_DURATION = 8000;
+
+        // 分类配置
+        const categoryConfig = {
+            common: { name: '常用书签', icon: '📌', defaultExpanded: true },
+            dev: { name: '开发工具', icon: '💻', defaultExpanded: true },
+            study: { name: '学习资源', icon: '📚', defaultExpanded: true },
+            design: { name: '设计网站', icon: '🎨', defaultExpanded: true }
+        };
+
+        // 折叠状态存储
+        const COLLAPSE_STATE_KEY = 'bookmark_group_collapse_states';
+
+        // 1. 初始化默认书签数据
+        const defaultBookmarks = [
+            { id: 2, name: 'ip111查询', url: 'https://ip111.cn/', desc: 'IP111查询', category: 'common' },
+            { id: 1, name: '百度网盘', url: 'https://pan.baidu.com/', desc: '百度网盘', category: 'common' },
+            { id: 3, name: '赛博活佛', url: 'https://www.cloudflare.com/', desc: '小黄云', category: 'dev' },
+            { id: 4, name: '123云盘', url: 'https://www.123pan.com/', desc: '123云盘', category: 'common' },
+            { id: 5, name: '夸克网盘', url: 'https://pan.quark.cn/list#/list/all', desc: '夸克网盘', category: 'common' },
+            { id: 6, name: '优设导航', url: 'https://hao.uisdc.com/', desc: '优设导航', category: 'design' },
+            { id: 7, name: '今日热榜', url: 'https://adzhp.cc/hotnews/', desc: '今日热榜', category: 'common' },
+            { id: 8, name: '423Down', url: 'https://www.423down.com/', desc: '423Down', category: 'study' }
+        ];
+
+        // 2. 获取localStorage中的书签
+        function getBookmarks() {
+            const stored = localStorage.getItem(BOOKMARK_KEY);
+            return stored ? JSON.parse(stored) : defaultBookmarks;
+        }
+
+        // 3. 保存书签到localStorage
+        function saveBookmarks(bookmarks) {
+            localStorage.setItem(BOOKMARK_KEY, JSON.stringify(bookmarks));
+            // 保存后更新分组书签数量
+            renderBookmarkGroups();
+        }
+
+        // 4. 获取分组折叠状态
+        function getCollapseStates() {
+            const stored = localStorage.getItem(COLLAPSE_STATE_KEY);
+            return stored ? JSON.parse(stored) : getDefaultCollapseStates();
+        }
+
+        // 5. 获取默认折叠状态
+        function getDefaultCollapseStates() {
+            const states = {};
+            Object.keys(categoryConfig).forEach(catKey => {
+                states[catKey] = !categoryConfig[catKey].defaultExpanded;
+            });
+            return states;
+        }
+
+        // 6. 保存分组折叠状态
+        function saveCollapseStates(states) {
+            localStorage.setItem(COLLAPSE_STATE_KEY, JSON.stringify(states));
+        }
+
+        // 7. 切换分组折叠状态 - 优化：添加滚动定位
+        function toggleGroupCollapse(catKey) {
+            const collapseStates = getCollapseStates();
+            // 切换状态
+            collapseStates[catKey] = !collapseStates[catKey];
+            // 保存状态
+            saveCollapseStates(collapseStates);
+            // 更新页面显示
+            const groupElement = document.getElementById(`bookmark-group-${catKey}`);
+            if (groupElement) {
+                groupElement.classList.toggle('collapsed', collapseStates[catKey]);
+                // 优化：自动滚动到分组标题（平滑滚动）
+                const groupTitle = groupElement.querySelector('.bookmark-group-title');
+                groupTitle.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest'
+                });
+                // 添加短暂高亮提示，强化交互反馈
+                groupTitle.style.backgroundColor = 'var(--btn-bg)';
+                groupTitle.style.color = 'var(--btn-text)';
+                setTimeout(() => {
+                    groupTitle.style.backgroundColor = '';
+                    groupTitle.style.color = '';
+                }, 200);
+            }
+        }
+
+        // 新增：全部展开分组
+        function expandAllGroups() {
+            const collapseStates = getCollapseStates();
+            Object.keys(categoryConfig).forEach(catKey => {
+                collapseStates[catKey] = false; // 全部展开（collapsed=false）
+            });
+            saveCollapseStates(collapseStates);
+            renderBookmarkGroups();
+            // 提示信息
+            showUndoRedoContainer('所有分组已展开');
+        }
+
+        // 新增：全部折叠分组
+        function collapseAllGroups() {
+            const collapseStates = getCollapseStates();
+            Object.keys(categoryConfig).forEach(catKey => {
+                collapseStates[catKey] = true; // 全部折叠（collapsed=true）
+            });
+            saveCollapseStates(collapseStates);
+            renderBookmarkGroups();
+            // 提示信息
+            showUndoRedoContainer('所有分组已折叠');
+        }
+
+        // 8. 渲染书签分组 - 优化：支持双击折叠/展开
+        function renderBookmarkGroups() {
+            const groupContainer = document.getElementById('bookmark-group-container');
+            const bookmarks = getBookmarks();
+            const collapseStates = getCollapseStates();
+            groupContainer.innerHTML = '';
+
+            // 按分类分组书签
+            const groupedBookmarks = {};
+            Object.keys(categoryConfig).forEach(catKey => {
+                groupedBookmarks[catKey] = bookmarks.filter(bookmark => bookmark.category === catKey);
+            });
+
+            // 遍历每个分类，生成分组
+            Object.keys(categoryConfig).forEach(catKey => {
+                const catInfo = categoryConfig[catKey];
+                const catBookmarks = groupedBookmarks[catKey] || [];
+                const isCollapsed = collapseStates[catKey];
+
+                // 创建分组容器
+                const groupDiv = document.createElement('div');
+                groupDiv.id = `bookmark-group-${catKey}`;
+                groupDiv.className = `bookmark-group ${isCollapsed ? 'collapsed' : ''}`;
+
+                // 分组HTML结构
+                groupDiv.innerHTML = `
+                    <!-- 分组标题栏（支持点击/双击折叠/展开） -->
+                    <div class="bookmark-group-title" onclick="toggleGroupCollapse('${catKey}')" ondblclick="toggleGroupCollapse('${catKey}')">
+                        <div class="group-title-left">
+                            <span class="group-icon">${catInfo.icon}</span>
+                            <span class="group-name">${catInfo.name}（${catBookmarks.length}个）</span>
+                        </div>
+                        <span class="group-collapse-icon">▶</span>
+                    </div>
+                    <!-- 分组内容容器 -->
+                    <div class="bookmark-group-content">
+                        <div class="bookmark-container" id="bookmark-container-${catKey}">
+                            <!-- 书签卡片由JS动态生成 -->
+                        </div>
+                    </div>
+                `;
+
+                // 添加到分组容器
+                groupContainer.appendChild(groupDiv);
+
+                // 渲染当前分组下的书签卡片
+                const bookmarkContainer = document.getElementById(`bookmark-container-${catKey}`);
+                bookmarkContainer.innerHTML = '';
+                catBookmarks.forEach(bookmark => {
+                    const card = document.createElement('div');
+                    card.className = 'bookmark-card';
+                    card.dataset.id = bookmark.id;
+                    card.dataset.category = bookmark.category;
+                    card.draggable = true;
+                    card.innerHTML = `
+                        <div class="bookmark-actions">
+                            <button class="edit-btn" onclick="openEditModal(${bookmark.id})">编辑</button>
+                            <button class="delete-btn" onclick="deleteBookmark(${bookmark.id})">删除</button>
+                        </div>
+                        <a href="${bookmark.url}" target="_blank">
+                            <h3>${bookmark.name}</h3>
+                            <p>${bookmark.desc || '无描述'}</p>
+                        </a>
+                    `;
+                    bookmarkContainer.appendChild(card);
+                });
+            });
+
+            // 绑定拖拽事件
+            bindDragEvents();
+            // 更新撤销重做按钮状态
+            updateUndoRedoBtnState();
+        }
+
+        // ========== 拖拽排序核心功能 ==========
+        let draggedCard = null;
+
+        function bindDragEvents() {
+            const allCards = document.querySelectorAll('.bookmark-card');
+            const allContainers = document.querySelectorAll('.bookmark-container');
+
+            allCards.forEach(card => {
+                card.addEventListener('dragstart', (e) => {
+                    draggedCard = card;
+                    card.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', card.dataset.id);
+                    setTimeout(() => {
+                        card.style.opacity = '0.5';
+                    }, 0);
+                });
+
+                card.addEventListener('dragend', () => {
+                    draggedCard.classList.remove('dragging');
+                    card.style.opacity = '1';
+                    draggedCard = null;
+                    allCards.forEach(c => c.classList.remove('drag-over'));
+                });
+
+                card.addEventListener('dragenter', (e) => {
+                    e.preventDefault();
+                    if (card !== draggedCard) {
+                        card.classList.add('drag-over');
+                    }
+                });
+
+                card.addEventListener('dragleave', () => {
+                    card.classList.remove('drag-over');
+                });
+
+                card.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+
+                card.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    card.classList.remove('drag-over');
+                    if (card === draggedCard) return;
+
+                    const draggedId = draggedCard.dataset.id;
+                    const targetId = card.dataset.id;
+                    reorderBookmarks(draggedId, targetId);
+                });
+            });
+        }
+
+        function reorderBookmarks(draggedId, targetId) {
+            let bookmarks = getBookmarks();
+            const draggedIndex = bookmarks.findIndex(item => item.id == draggedId);
+            const targetIndex = bookmarks.findIndex(item => item.id == targetId);
+            [bookmarks[draggedIndex], bookmarks[targetIndex]] = [bookmarks[targetIndex], bookmarks[draggedIndex]];
+            saveBookmarks(bookmarks);
+            renderBookmarkGroups();
+        }
+
+        // ========== 导入导出+清空功能 ==========
+        const importBtn = document.getElementById('import-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const importInput = document.getElementById('import-input');
+        // 绑定全部展开/折叠按钮事件
+        const expandAllBtn = document.getElementById('expand-all-btn');
+        const collapseAllBtn = document.getElementById('collapse-all-btn');
+        expandAllBtn.addEventListener('click', expandAllGroups);
+        collapseAllBtn.addEventListener('click', collapseAllGroups);
+
+        exportBtn.addEventListener('click', () => {
+            const bookmarks = getBookmarks();
+            const blob = new Blob([JSON.stringify(bookmarks, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `my_bookmarks_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        importBtn.addEventListener('click', () => {
+            importInput.click();
+        });
+
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedBookmarks = JSON.parse(event.target.result);
+                    if (Array.isArray(importedBookmarks) && importedBookmarks.every(item => item.id && item.name && item.url)) {
+                        saveBookmarks(importedBookmarks);
+                        renderBookmarkGroups();
+                        undoStack = [];
+                        redoStack = [];
+                        hideUndoRedoContainer();
+                        alert('书签导入成功！');
+                    } else {
+                        alert('导入文件格式错误，请确保是合法的书签JSON文件');
+                    }
+                } catch (err) {
+                    alert('导入失败：文件解析错误');
+                }
+            };
+            reader.readAsText(file);
+            importInput.value = '';
+        });
+
+        clearBtn.addEventListener('click', () => {
+            if (confirm('确定要清空所有书签吗？此操作不可恢复！')) {
+                localStorage.removeItem(BOOKMARK_KEY);
+                renderBookmarkGroups();
+                undoStack = [];
+                redoStack = [];
+                hideUndoRedoContainer();
+                alert('书签已清空，恢复为默认书签');
+            }
+        });
+
+        // ========== 撤销重做核心功能 ==========
+        const undoRedoContainer = document.getElementById('undo-redo-container');
+        const undoBtn = document.getElementById('undo-btn');
+        const redoBtn = document.getElementById('redo-btn');
+        const undoRedoText = document.getElementById('undo-redo-text');
+        const undoRedoCloseBtn = document.getElementById('undo-redo-close-btn');
+
+        function showUndoRedoContainer(text) {
+            if (historyTimer) clearTimeout(historyTimer);
+            undoRedoText.textContent = text;
+            undoRedoContainer.style.display = 'flex';
+            historyTimer = setTimeout(() => {
+                hideUndoRedoContainer();
+            }, HISTORY_DURATION);
+        }
+
+        function hideUndoRedoContainer() {
+            undoRedoContainer.style.display = 'none';
+            if (historyTimer) clearTimeout(historyTimer);
+        }
+
+        function updateUndoRedoBtnState() {
+            undoBtn.style.display = undoStack.length > 0 ? 'block' : 'none';
+            redoBtn.style.display = redoStack.length > 0 ? 'block' : 'none';
+        }
+
+        function undoDelete() {
+            if (undoStack.length === 0) return;
+            const restoredBookmark = undoStack.pop();
+            redoStack.push(restoredBookmark);
+            if (redoStack.length > MAX_HISTORY_STEPS) redoStack.shift();
+            let bookmarks = getBookmarks();
+            bookmarks.push(restoredBookmark);
+            saveBookmarks(bookmarks);
+            renderBookmarkGroups();
+            showUndoRedoContainer(`已恢复【${restoredBookmark.name}】`);
+        }
+
+        function redoDelete() {
+            if (redoStack.length === 0) return;
+            const redoBookmark = redoStack.pop();
+            undoStack.push(redoBookmark);
+            if (undoStack.length > MAX_HISTORY_STEPS) undoStack.shift();
+            let bookmarks = getBookmarks();
+            bookmarks = bookmarks.filter(item => item.id !== redoBookmark.id);
+            saveBookmarks(bookmarks);
+            renderBookmarkGroups();
+            showUndoRedoContainer(`已再次删除【${redoBookmark.name}】`);
+        }
+
+        undoBtn.addEventListener('click', undoDelete);
+        redoBtn.addEventListener('click', redoDelete);
+        undoRedoCloseBtn.addEventListener('click', hideUndoRedoContainer);
+
+        // ========== 时间栏优化 ==========
+        function updateTime() {
+            const now = new Date();
+            const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const weekDay = weekDays[now.getDay()];
+            const datetimeStr = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('datetime-text').textContent = datetimeStr;
+            document.getElementById('week-text').textContent = weekDay;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // ========== 深浅色模式切换 ==========
+        const themeToggle = document.getElementById('theme-toggle');
+        const body = document.body;
+
+        if (localStorage.getItem('theme') === 'dark') {
+            body.classList.add('dark-mode');
+            themeToggle.textContent = '切换浅色模式';
+        }
+
+        themeToggle.addEventListener('click', () => {
+            body.classList.toggle('dark-mode');
+            if (body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                themeToggle.textContent = '切换浅色模式';
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeToggle.textContent = '切换深色模式';
+            }
+        });
+
+        // ========== 侧边栏分类筛选 ==========
+        const sidebar = document.getElementById('sidebar');
+        const navItems = document.querySelectorAll('.nav-item');
+
+        function filterBookmarks(category) {
+            const allGroups = document.querySelectorAll('.bookmark-group');
+            const allCards = document.querySelectorAll('.bookmark-card');
+
+            if (category === 'all') {
+                allGroups.forEach(group => group.style.display = 'block');
+                allCards.forEach(card => card.style.display = 'block');
+            } else {
+                allGroups.forEach(group => {
+                    if (group.id === `bookmark-group-${category}`) {
+                        group.style.display = 'block';
+                        const groupCards = group.querySelectorAll('.bookmark-card');
+                        groupCards.forEach(card => card.style.display = 'block');
+                    } else {
+                        group.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+                filterBookmarks(item.dataset.category);
+            });
+            item.addEventListener('mouseenter', () => {
+                filterBookmarks(item.dataset.category);
+            });
+        });
+
+        // ========== 搜索功能 ==========
+        const searchInput = document.getElementById('search-input');
+        const localSearchBtn = document.getElementById('local-search-btn');
+        const bingSearchBtn = document.getElementById('bing-search-btn');
+
+        localSearchBtn.addEventListener('click', () => {
+            const keyword = searchInput.value.trim().toLowerCase();
+            if (!keyword) {
+                document.querySelectorAll('.bookmark-card').forEach(card => card.style.display = 'block');
+                return;
+            }
+
+            const allCards = document.querySelectorAll('.bookmark-card');
+            allCards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                const group = card.closest('.bookmark-group');
+                const isGroupVisible = group.style.display !== 'none';
+
+                if (isGroupVisible && text.includes(keyword)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        bingSearchBtn.addEventListener('click', () => {
+            const keyword = searchInput.value.trim();
+            if (keyword) {
+                const url = `https://cn.bing.com/search?q=${encodeURIComponent(keyword)}`;
+                window.open(url, '_blank');
+            }
+        });
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                localSearchBtn.click();
+            }
+        });
+
+        // ========== 书签管理弹窗功能 ==========
+        const modal = document.getElementById('bookmark-modal');
+        const addBookmarkBtn = document.getElementById('add-bookmark-btn');
+        const bookmarkForm = document.getElementById('bookmark-form');
+        const modalTitle = document.getElementById('modal-title');
+        let currentBookmarkId = null;
+
+        addBookmarkBtn.addEventListener('click', () => {
+            modalTitle.textContent = '新增书签';
+            currentBookmarkId = null;
+            bookmarkForm.reset();
+            modal.style.display = 'flex';
+        });
+
+        function openEditModal(id) {
+            currentBookmarkId = id;
+            const bookmarks = getBookmarks();
+            const bookmark = bookmarks.find(item => item.id === id);
+            if (bookmark) {
+                modalTitle.textContent = '编辑书签';
+                document.getElementById('bookmark-id').value = bookmark.id;
+                document.getElementById('bookmark-name').value = bookmark.name;
+                document.getElementById('bookmark-url').value = bookmark.url;
+                document.getElementById('bookmark-desc').value = bookmark.desc;
+                document.getElementById('bookmark-category').value = bookmark.category;
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        function deleteBookmark(id) {
+            if (confirm('确定要删除这个书签吗？')) {
+                let bookmarks = getBookmarks();
+                const deletedBookmark = bookmarks.find(item => item.id === id);
+                if (!deletedBookmark) return;
+                undoStack.push(deletedBookmark);
+                if (undoStack.length > MAX_HISTORY_STEPS) undoStack.shift();
+                redoStack = [];
+                bookmarks = bookmarks.filter(item => item.id !== id);
+                saveBookmarks(bookmarks);
+                renderBookmarkGroups();
+                showUndoRedoContainer(`书签【${deletedBookmark.name}】已删除`);
+            }
+        }
+
+        bookmarkForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = currentBookmarkId || Date.now();
+            const name = document.getElementById('bookmark-name').value;
+            const url = document.getElementById('bookmark-url').value;
+            const desc = document.getElementById('bookmark-desc').value;
+            const category = document.getElementById('bookmark-category').value;
+            
+            let bookmarks = getBookmarks();
+            if (currentBookmarkId) {
+                bookmarks = bookmarks.map(item => item.id === currentBookmarkId ? { id, name, url, desc, category } : item);
+            } else {
+                bookmarks.push({ id, name, url, desc, category });
+            }
+            redoStack = [];
+            saveBookmarks(bookmarks);
+            renderBookmarkGroups();
+            closeModal();
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // ========== 页面初始化 ==========
+        window.addEventListener('DOMContentLoaded', () => {
+            renderBookmarkGroups();
+        });
+    </script>
+</body>
+</html>
